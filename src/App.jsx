@@ -47,12 +47,27 @@ class App extends Component {
     this.state = {
       input: "",
       imageURL: "",
-      route: "signin",   // new!
-      isSignedIn: false, // new!
+      box: {},
+      route: "signin",
+      isSignedIn: false,
     };
+
+    this.lastClarifaiData = null; // NEW
+    /*---lastClarifaiData---
+    Purpose: Stores the latest response from the Clarifai API.
+    Reason: The face detection API returns the coordinates of detected faces, but you can't calculate the box until the image is fully loaded in the DOM.
+    It acts as a temporary cache so that the face box can be calculated once the image is ready.
+    */
+
+    this.imageLoaded = false; // NEW flag
+    /*---imageLoaded---
+    Purpose: A flag to track whether the image has finished loading in the browser.
+    Reason: You can't calculate face coordinates relative to the image size until the image is loaded, because the width and height of the <img> element aren't known yet.
+    When true, it's safe to calculate the face box.
+    */
   }
 
- // calculate the position of the face box
+  // calculate the position of the face box
   calculateFaceLocation = (data) => {
     try {
       const clarifaiFace =
@@ -82,16 +97,54 @@ class App extends Component {
   onButtonSubmit = () => {
     this.setState({ imageURL: this.state.input, box: {} });
 
+    const MODEL_ID = "face-detection";
+    const MODEL_VERSION_ID = "6dc7e46bc9124c5c8824be4822abe105";
+
     fetch(
-        `/api/v2/models/${MODEL_ID}/versions/${MODEL_VERSION_ID}/outputs`,
-        returnClarifaiRequestOptions(this.state.input)
-      )
+  `https://api.clarifai.com/v2/models/${MODEL_ID}/versions/${MODEL_VERSION_ID}/outputs`,
+  returnClarifaiRequestOptions(this.state.input)
+)
       .then((response) => response.json())
       .then((result) => {
-        console.log("Clarifai result:", result);
+        this.lastClarifaiData = result; // ✅ store response
+
+        if (this.imageLoaded) {
+          const box = this.calculateFaceLocation(this.lastClarifaiData);
+          this.displayFaceBox(box);
+        }
       })
       .catch((error) => console.log("error", error));
   };
+
+  /* Why are calculateFaceLocation() and this.displayFaceBox(box) called twice (first inside the .then() after fetching Clarifai API and then again inside onImageLoad?
+   Answer: Because we don't know which will happen first: the image loading or the API response arriving.
+   
+   const box = this.calculateFaceLocation(this.lastClarifaiData);
+   this.displayFaceBox(box); 
+ 
+   Reason:
+   The API response and the image load can happen in any order.
+   The code handles both scenarios:
+   Image loads first → wait for API to calculate box.
+   API responds first → wait for image to load to calculate box.
+   This avoids the problem where the bounding box might be calculated when the image size is unknown, which would break the display.
+   */
+
+  // NEW: called when image is loaded
+  onImageLoad = () => {
+    this.imageLoaded = true; // mark image as ready
+    if (this.lastClarifaiData) {
+      const box = this.calculateFaceLocation(this.lastClarifaiData);
+      this.displayFaceBox(box);
+    }
+  };
+
+  /* --onImageLoad()--
+  This function is passed to the <FaceRecognition> component and is called when the image finishes loading (onLoad event of <img>).
+  Checks if we already have face data (lastClarifaiData) from the API:
+  If yes, calculates the face box immediately.
+  Otherwise, it just sets imageLoaded = true and waits for the API response.
+  */
 
   onRouteChange = (route) => {
     if (route === "signout") {
@@ -117,7 +170,11 @@ class App extends Component {
               onInputChange={this.onInputChange}
               onButtonSubmit={this.onButtonSubmit}
             />
-            <FaceRecognition imageURL={this.state.imageURL} />
+            <FaceRecognition
+              imageURL={this.state.imageURL}
+              box={this.state.box}
+              onInmageLoad={this.onImageLoad}
+            />
           </div>
         ) : route === "signin" ? (
           <SignIn onRouteChange={this.onRouteChange} />
