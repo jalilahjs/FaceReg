@@ -15,7 +15,6 @@
     "clarifai-nodejs": "^0.3.0",
     "clarifai-nodejs-grpc": "^11.8.2",
     "particles-bg": "^2.5.5",
-    "particles.js": "^2.0.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "react-parallax-tilt": "^1.7.308",
