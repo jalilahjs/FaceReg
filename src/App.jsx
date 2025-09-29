@@ -105,7 +105,7 @@ class App extends Component {
         const faceCount = boxes.length;
 
         // update entries by number of faces
-        fetch("http://localhost:3000/image", {
+        fetch(`https://smart-brain-api-spvs.onrender.com/image`, {
           method: "put",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
