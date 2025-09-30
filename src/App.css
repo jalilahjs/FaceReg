@@ -23,3 +23,20 @@
   flex-wrap: wrap;
   pointer-events: none;
 }
+
+.app-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center; /* center horizontally */
+  margin-top: 2rem;
+}
+
+.face-image-container {
+  margin-top: 2rem; /* space between form/status and image */
+}
+
+.status-message {
+  font-size: 1.1rem;
+  color: orange;
+  text-align: center;
+}

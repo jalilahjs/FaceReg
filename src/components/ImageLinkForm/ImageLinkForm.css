@@ -10,3 +10,7 @@
     background-size: 80px 140px;
     background-position: 0 0, 0 0, 40px 70px, 40px 70px, 0 0, 40px 70px;
 }
+
+.image-link-form {
+  margin-bottom: 2rem; /* space between form and image */
+}

@@ -13,6 +13,7 @@ const initialState = {
   input: "",
   imageURL: "",
   boxes: [],
+  statusMessage: "",
   route: "signin",
   isSignedIn: false,
   user: { id: "", name: "", email: "", entries: 0, joined: "" },
@@ -32,7 +33,6 @@ class App extends Component {
     const width = Number(image.width);
     const height = Number(image.height);
 
-    // Clarifai returns regions array → each region has region_info.bounding_box
     return data.faces.map((region) => {
       return {
         leftCol: region.left_col * width,
@@ -47,52 +47,58 @@ class App extends Component {
 
   displayFaceBoxes = (boxes) => this.setState({ boxes });
 
-  onInputChange = (event) => this.setState({ input: event.target.value });
+  onInputChange = (event) => {
+    this.setState({ 
+      input: event.target.value,
+      statusMessage: "" // reset status when typing a new URL
+    });
+  };
 
   onImageLoad = () => {
-    if (this.lastClarifaiData && this.lastClarifaiData.outputs[0].data.regions) {
+    if (this.lastClarifaiData && this.lastClarifaiData.faces) {
       const boxes = this.calculateFaceLocations(this.lastClarifaiData);
       this.displayFaceBoxes(boxes);
     } else {
-      this.displayFaceBoxes([]); // no faces → clear boxes
+      this.displayFaceBoxes([]);
     }
   };
 
   onButtonSubmit = () => {
-    // Only proceed if the input URL is different from the currently displayed image
+    if (!this.state.input) return;
     if (this.state.input === this.state.imageURL) return;
 
-    // Reset image and boxes
-    this.setState({ imageURL: this.state.input, boxes: [] });
+    // Reset image, boxes, and show analyzing message
+    this.setState({ 
+      imageURL: this.state.input, 
+      boxes: [], 
+      statusMessage: "Inspecting pixels…" 
+    });
     this.lastClarifaiData = null;
 
-    fetch(
-      `https://smart-brain-api-spvs.onrender.com/imageurl`, {
+    fetch(`https://smart-brain-api-spvs.onrender.com/imageurl`, {
       method: "post",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        input: this.state.input,
-      }),
-    }).then((response) => response.json())
+      body: JSON.stringify({ input: this.state.input }),
+    })
+      .then((response) => response.json())
       .then((result) => {
         console.log("Clarifai result:", result);
         this.lastClarifaiData = result;
 
-        // If faces detected, calculate boxes
-        if (result.faces) {
+        if (result.faces && result.faces.length > 0) {
           const boxes = this.calculateFaceLocations(result);
           this.displayFaceBoxes(boxes);
 
           const faceCount = boxes.length;
-          console.log('faceCount', faceCount)
-          // update entries by number of faces
+          this.setState({ 
+            statusMessage: `${faceCount} face(s) locked and loaded!`,
+            input: "" // <-- clears the ImageLinkForm input field
+          });
+
           fetch(`https://smart-brain-api-spvs.onrender.com/image`, {
             method: "put",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              id: this.state.user.id,
-              faces: faceCount,
-            }),
+            body: JSON.stringify({ id: this.state.user.id, faces: faceCount }),
           })
             .then((res) => res.json())
             .then((entries) =>
@@ -100,14 +106,14 @@ class App extends Component {
             )
             .catch(console.log);
         } else {
-          // No faces detected → clear boxes
           this.displayFaceBoxes([]);
+          this.setState({ statusMessage: "Oops! That link seems very shy. Try another?" });
         }
       })
       .catch((err) => {
         console.log("error", err);
-        // In case of error, clear boxes
         this.displayFaceBoxes([]);
+        this.setState({ statusMessage: "Oops! That link seems very shy. Try another?" });
       });
   };
 
@@ -118,20 +124,27 @@ class App extends Component {
   };
 
   render() {
-    const { isSignedIn, imageURL, route, boxes, user } = this.state;
+    const { isSignedIn, imageURL, route, boxes, user, statusMessage, input } = this.state;
 
     return (
       <div className="App">
         <ParticlesBg type="square" bg={true} />
         <Navigation isSignedIn={isSignedIn} onRouteChange={this.onRouteChange} />
-        <Logo /> {/* Always shows */}
+        <Logo />
         {route === "home" ? (
           <div>
             <Rank name={user.name} entries={user.entries} />
             <ImageLinkForm
               onInputChange={this.onInputChange}
               onButtonSubmit={this.onButtonSubmit}
+              inputValue={input} // pass the input value to the form
             />
+
+            {/* Status message */}
+            <div className="status-message" style={{ marginTop: "1rem", fontWeight: "bold" }}>
+              {statusMessage}
+            </div>
+
             <FaceRecognition
               imageURL={imageURL}
               boxes={boxes}
