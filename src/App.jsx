@@ -33,22 +33,54 @@ class App extends Component {
     const width = Number(image.width);
     const height = Number(image.height);
 
-    return data.faces.map((region) => {
+    return data.faces.map((face) => { // loop over every face in the image and adjust the square around the face
       return {
-        leftCol: region.left_col * width,
-        topRow: region.top_row * height,
-        rightCol: width - region.right_col * width,
-        bottomRow: height - region.bottom_row * height,
-        width: (region.right_col - region.left_col) * width,
-        height: (region.bottom_row - region.top_row) * height,
+        leftCol: face.left_col * width,
+        topRow: face.top_row * height,
+        rightCol: width - face.right_col * width,
+        bottomRow: height - face.bottom_row * height,
+        width: (face.right_col - face.left_col) * width,
+        height: (face.bottom_row - face.top_row) * height,
       };
     });
+  };
+
+  updateScore = (result) => {
+    const baseURL = import.meta.env.VITE_API_BASE_URL;
+    if (result.faces && result.faces.length > 0) {
+
+      const boxes = this.calculateFaceLocations(result);
+      this.displayFaceBoxes(boxes);
+
+      // get the count of the boxes (faces) to add them to the score
+      const faceCount = boxes.length;
+      // update the label under the image 
+      this.setState({
+        statusMessage: `${faceCount} face(s) locked and loaded!`,
+        input: "" // <-- clears the ImageLinkForm input field
+      });
+
+      // update the score
+      fetch(`${baseURL}/score`, {
+        method: "put",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: this.state.user.id, faces: faceCount }),
+      })
+        .then((res) => res.json())
+        .then((entries) =>
+          this.setState(Object.assign(this.state.user, { entries }))
+        )
+        .catch(console.log);
+    } else {
+      this.displayFaceBoxes([]);
+      this.setState({ statusMessage: "Oops! That link seems very shy. Try another?" });
+    }
   };
 
   displayFaceBoxes = (boxes) => this.setState({ boxes });
 
   onInputChange = (event) => {
-    this.setState({ 
+    this.setState({
       input: event.target.value,
       statusMessage: "" // reset status when typing a new URL
     });
@@ -64,51 +96,30 @@ class App extends Component {
   };
 
   onButtonSubmit = () => {
-    if (!this.state.input) return;
+
+    if (!this.state.input) return; // the text box is empty then do nothing
     if (this.state.input === this.state.imageURL) return;
 
     // Reset image, boxes, and show analyzing message
-    this.setState({ 
-      imageURL: this.state.input, 
-      boxes: [], 
-      statusMessage: "Inspecting pixels…" 
+    this.setState({
+      imageURL: this.state.input,
+      boxes: [],
+      statusMessage: "Inspecting pixels…"
     });
     this.lastClarifaiData = null;
 
-    fetch(`https://smart-brain-api-spvs.onrender.com/imageurl`, {
+    // call local server when running on local and production server when running in prod
+    const baseURL = import.meta.env.VITE_API_BASE_URL;
+    fetch(`${baseURL}/faceDetection`, {
       method: "post",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ input: this.state.input }),
     })
       .then((response) => response.json())
       .then((result) => {
-        console.log("Clarifai result:", result);
         this.lastClarifaiData = result;
-
-        if (result.faces && result.faces.length > 0) {
-          const boxes = this.calculateFaceLocations(result);
-          this.displayFaceBoxes(boxes);
-
-          const faceCount = boxes.length;
-          this.setState({ 
-            statusMessage: `${faceCount} face(s) locked and loaded!`,
-            input: "" // <-- clears the ImageLinkForm input field
-          });
-
-          fetch(`https://smart-brain-api-spvs.onrender.com/image`, {
-            method: "put",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ id: this.state.user.id, faces: faceCount }),
-          })
-            .then((res) => res.json())
-            .then((entries) =>
-              this.setState(Object.assign(this.state.user, { entries }))
-            )
-            .catch(console.log);
-        } else {
-          this.displayFaceBoxes([]);
-          this.setState({ statusMessage: "Oops! That link seems very shy. Try another?" });
-        }
+        // after a successful face detection update the score
+        this.updateScore(result);
       })
       .catch((err) => {
         console.log("error", err);
@@ -131,7 +142,7 @@ class App extends Component {
         <ParticlesBg type="square" bg={true} />
         <Navigation isSignedIn={isSignedIn} onRouteChange={this.onRouteChange} />
         <Logo />
-        {route === "home" ? (
+        {route === "home" ? ( // if we are on the home page then show the following components
           <div>
             <Rank name={user.name} entries={user.entries} />
             <ImageLinkForm
@@ -151,7 +162,7 @@ class App extends Component {
               onImageLoad={this.onImageLoad}
             />
           </div>
-        ) : route === "signin" ? (
+        ) : route === "signin" ? (  // if we are on the sign is page show the following components
           <SignIn loadUser={this.loadUser} onRouteChange={this.onRouteChange} />
         ) : (
           <Register loadUser={this.loadUser} onRouteChange={this.onRouteChange} />
