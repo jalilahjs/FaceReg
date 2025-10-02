@@ -4,6 +4,7 @@
 
 import React from "react";
 import Loader from "../Loader/Loader"; // 
+import { Data } from "clarifai-nodejs-grpc/proto/clarifai/api/resources_pb";
 
 class SignIn extends React.Component {
   constructor(props) {
@@ -47,7 +48,7 @@ class SignIn extends React.Component {
         } else if (user === "unable to get user") {
           this.setState({ error: "Server error. Please try again later." });
         } else {
-          this.setState({ error: "Unable to sign in. Please try again." });
+          this.setState({ error: user.error });
         }
       })
       .catch(() => {
