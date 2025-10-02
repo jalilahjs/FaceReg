@@ -1,5 +1,8 @@
 import React from 'react';
 
+// Stateless functional component. Receives two props from App.jsx.
+// onRouteChange - function to switch between pages (signin, register, home, signout).
+// isSignedIn - boolean indicating whether a user is logged in.
 const Navigation = ({ onRouteChange, isSignedIn }) => {
     if (isSignedIn) {
         return (

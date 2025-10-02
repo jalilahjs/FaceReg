@@ -1,3 +1,7 @@
+// Brings in React (the framework) and Component (to create a class-based component).
+// Imports helper UI components like Nav, Logo, FaceReg etc.
+// ParticlesBg adds a moving background effect for nicer visuals.
+// App.css provides custom styles.
 import React, { Component } from "react";
 import ParticlesBg from "particles-bg";
 import Navigation from "./components/Navigation/Navigation";
@@ -9,25 +13,27 @@ import SignIn from "./components/SignIn/SignIn";
 import Register from "./components/Register/Register";
 import "./App.css";
 
-const initialState = {
-  input: "",
-  imageURL: "",
-  boxes: [],
-  statusMessage: "",
-  route: "signin",
-  isSignedIn: false,
-  user: { id: "", name: "", email: "", entries: 0, joined: "" },
+const initialState = { // Defines default data when app starts/user logs out.
+  input: "", // current image URL typed in by user
+  imageURL: "", // the image being displayed
+  boxes: [], // positions of faces detected
+  statusMessage: "", // display msgs likes "inspecting pixels..", etc.
+  route: "signin", // current page (signin, register or home)
+  isSignedIn: false, // tracks login status
+  user: { id: "", name: "", email: "", entries: 0, joined: "" }, // stores user details and their stats
 };
 
-class App extends Component {
+class App extends Component { // creates the App component
   constructor() {
     super();
-    this.state = initialState;
-    this.lastClarifaiData = null;
+    this.state = initialState; // stores all app data
+    this.lastClarifaiData = null; // temporarily stores face detection results, so don't need to refetch if same image loads
   }
 
-  loadUser = (data) => this.setState({ user: data });
+  loadUser = (data) => this.setState({ user: data }); // updates the app with user's details after they sign in/register
 
+  // takes detection data from Clarifai, converts face bounding box ratios into pixel positions on the image.
+  // ensures faces are drawn in correct location.
   calculateFaceLocations = (data) => {
     const image = document.getElementById("inputimage");
     const width = Number(image.width);
@@ -45,7 +51,7 @@ class App extends Component {
     });
   };
 
-  updateScore = (result) => {
+  updateScore = (result) => { // function that centralizes what happens after a face detection
     const baseURL = import.meta.env.VITE_API_BASE_URL;
     if (result.faces && result.faces.length > 0) {
 
@@ -57,10 +63,10 @@ class App extends Component {
       // update the label under the image 
       this.setState({
         statusMessage: `${faceCount} face(s) locked and loaded!`,
-        input: "" // <-- clears the ImageLinkForm input field
+        input: "" // clears the ImageLinkForm input field after a face is detected
       });
 
-      // update the score
+      // updates the score
       fetch(`${baseURL}/score`, {
         method: "put",
         headers: { "Content-Type": "application/json" },
@@ -77,16 +83,16 @@ class App extends Component {
     }
   };
 
-  displayFaceBoxes = (boxes) => this.setState({ boxes });
+  displayFaceBoxes = (boxes) => this.setState({ boxes }); // updates the state so React re-renders face rectangles on the image
 
   onInputChange = (event) => {
     this.setState({
       input: event.target.value,
-      statusMessage: "" // reset status when typing a new URL
+      statusMessage: "" // reset status when typing a new URL to avoid old msges lingering
     });
   };
 
-  onImageLoad = () => {
+  onImageLoad = () => { // still ensures face boxes show correctly after the image finishes loading
     if (this.lastClarifaiData && this.lastClarifaiData.faces) {
       const boxes = this.calculateFaceLocations(this.lastClarifaiData);
       this.displayFaceBoxes(boxes);
@@ -95,6 +101,12 @@ class App extends Component {
     }
   };
 
+  //triggered when user clicks detect button.
+  // 1. avoids re-submitting the same image.
+  // 2. calls backend API which talks to Clarifai.
+  // 3. saves detection results and draws face boxes if found.
+  // 4. updates user's entries count (how many faces are detected).
+  // 5. if no faces or error --> clears boxes.
   onButtonSubmit = () => {
 
     if (!this.state.input) return; // the text box is empty then do nothing
@@ -118,7 +130,7 @@ class App extends Component {
       .then((response) => response.json())
       .then((result) => {
         this.lastClarifaiData = result;
-        // after a successful face detection update the score
+        // after successful face detection, updates the score/result
         this.updateScore(result);
       })
       .catch((err) => {
@@ -128,7 +140,7 @@ class App extends Component {
       });
   };
 
-  onRouteChange = (route) => {
+  onRouteChange = (route) => { // controls what page to show (signin, register, home), logs out user by resetting state to initialState.
     if (route === "signout") this.setState(initialState);
     else if (route === "home") this.setState({ isSignedIn: true });
     this.setState({ route });
@@ -142,7 +154,7 @@ class App extends Component {
         <ParticlesBg type="square" bg={true} />
         <Navigation isSignedIn={isSignedIn} onRouteChange={this.onRouteChange} />
         <Logo />
-        {route === "home" ? ( // if we are on the home page then show the following components
+        {route === "home" ? ( // if we are on the home page, then show the following components
           <div>
             <Rank name={user.name} entries={user.entries} />
             <ImageLinkForm
@@ -162,7 +174,7 @@ class App extends Component {
               onImageLoad={this.onImageLoad}
             />
           </div>
-        ) : route === "signin" ? (  // if we are on the sign is page show the following components
+        ) : route === "signin" ? (  // if we are on the signin page, show the following components
           <SignIn loadUser={this.loadUser} onRouteChange={this.onRouteChange} />
         ) : (
           <Register loadUser={this.loadUser} onRouteChange={this.onRouteChange} />
