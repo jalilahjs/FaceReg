@@ -17,7 +17,7 @@ class Register extends React.Component {
     };
   }
 
-  // updates state as user types in each file, ensures form fields are controlled inputs.
+  // updates state as user types in each field, ensures form fields are controlled inputs.
   onNameChange = (event) => {
     this.setState({ name: event.target.value });
   };
@@ -34,7 +34,8 @@ class Register extends React.Component {
   onSubmitRegister = () => {
     this.setState({ loading: true, error: "" }); // show loader + clear errors
     const baseURL = import.meta.env.VITE_API_BASE_URL;
-    fetch(`${baseURL}/register`, {
+
+    fetch(`${baseURL}/api/auth/register`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -43,25 +44,30 @@ class Register extends React.Component {
         password: this.state.password,
       }),
     })
-      .then((res) => res.json()) // If successful, calls loadUser or updates app state with new user. Switches route to home/main app.
+      .then((res) => res.json())
       .then((data) => {
         this.setState({ loading: false });
-        if (data.id) {
-          // Success
-          this.props.loadUser(data);
+
+        // ✅ FIRST check if the backend returned an error
+        if (data.error) {
+          this.setState({ error: data.error }); // show backend validation error (e.g., weak password)
+          return;
+        }
+
+        // ✅ Only unwrap user AFTER confirming no error
+        const user = data.user;
+        if (user && user.id) {
+          this.props.loadUser(user);
           this.props.onRouteChange("home");
-        } else if (data.error) {
-          // If response has error, it will display { error: "message" }
-          this.setState({ error: data.error });
         } else {
-          // If something unexpected, a fallback error msg will appear
-          this.setState({ error: data }); // better fallback
+          // fallback (unlikely, but safe guard)
+          this.setState({ error: "Unexpected server response. Please try again." });
         }
       })
       .catch(() =>
         this.setState({
           loading: false,
-          error: "Server error. Please try again later.", //  more descriptive
+          error: "Server error. Please try again later.", // descriptive fallback
         })
       );
   };
@@ -70,7 +76,7 @@ class Register extends React.Component {
     const { onRouteChange } = this.props;
     const { error, loading } = this.state; // include loading for spinner
 
-    return ( // uses Tachyons classes for layout, spacing and styling
+    return (
       <div className="center">
         <article className="br3 ba dark-gray b--black-10 mv4 w-100 w-50-m w-25-l mw6 shadow-5 center">
           <main className="pa4 black-80">
@@ -78,9 +84,10 @@ class Register extends React.Component {
               <fieldset id="sign_up" className="ba b--transparent ph0 mh0">
                 <legend className="f2 fw6 ph0 mh0">Register</legend>
 
+                {/* ✅ This now shows backend validation (password strength) messages correctly */}
                 {error && <p style={{ color: "orange" }}>{error}</p>}
 
-                {/* Spinner instead of text */}
+                {/* Spinner while loading */}
                 {loading && (
                   <div className="center">
                     <div className="spinner"></div>
@@ -90,6 +97,7 @@ class Register extends React.Component {
                   </div>
                 )}
 
+                {/* Inputs are disabled while loading */}
                 <div className="mt3">
                   <label className="db fw6 lh-copy f6" htmlFor="name">
                     Name
@@ -100,7 +108,7 @@ class Register extends React.Component {
                     name="name"
                     id="name"
                     onChange={this.onNameChange}
-                    disabled={loading} // disable input while loading
+                    disabled={loading}
                   />
                 </div>
                 <div className="mt3">
@@ -136,7 +144,7 @@ class Register extends React.Component {
                   className="b ph3 pv2 input-reset ba b--black bg-transparent grow pointer f6 dib"
                   type="submit"
                   value={loading ? "Registering…" : "Register"}
-                  disabled={loading} // disable button while loading
+                  disabled={loading}
                 />
               </div>
               <div className="lh-copy mt3">

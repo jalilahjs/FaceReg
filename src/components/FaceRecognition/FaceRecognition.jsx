@@ -4,21 +4,27 @@ import React from "react"; // uses React for building the UI
 import "./FaceRecognition.css"; // loads CSS file for styling (keep visuals consistent)
 
 // this is a stateless functional component, receiving 3 props from App.jsx.
-// ImageURL: image to display, BoxesL array of face box positions, onImageLoad: callback to trigger once image is fully loaded.
+// imageURL: image to display, boxes: array of face box positions, onImageLoad: callback to trigger once image is fully loaded.
 const FaceRecognition = ({ imageURL, boxes, onImageLoad }) => {
   return (
     //wraps everything in centered container.
     //image contained has position relative, which is required so face boxes can be placed on top of the image.
-    <div className="center"> 
-      <div className="image-container" style={{ position: "relative" }}> 
-        <img
-          id="inputimage" 
-          src={imageURL}
-          alt=""
-          width="500px" // fixed width for consistency
-          height="auto"
-          onLoad={onImageLoad} // lets App.jsx calculate and draw bounding box once image dimensions are known
-        />
+    <div className="center">
+      <div className="image-container" style={{ position: "relative" }}>
+        
+        {/* ✅ Only render the image if imageURL is non-empty */}
+        {imageURL && (
+          <img
+            id="inputimage"
+            src={imageURL}
+            alt=""
+            width="500px" // fixed width for consistency
+            height="auto"
+            onLoad={onImageLoad} // lets App.jsx calculate and draw bounding box once image dimensions are known
+          />
+        )}
+
+        {/* face boxes */}
         {boxes &&
           boxes.map((box, i) => (
             <div

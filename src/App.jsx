@@ -1,3 +1,4 @@
+// This App.jsx is the main controller of my app. It stores all the global state, decides which page the user sees, and connects all components.
 // Brings in React (the framework) and Component (to create a class-based component).
 // Imports helper UI components like Nav, Logo, FaceReg etc.
 // ParticlesBg adds a moving background effect for nicer visuals.
@@ -13,7 +14,8 @@ import SignIn from "./components/SignIn/SignIn";
 import Register from "./components/Register/Register";
 import "./App.css";
 
-const initialState = { // Defines default data when app starts/user logs out.
+// initialState in the foundation or the app's memory.
+const initialState = {
   input: "", // current image URL typed in by user
   imageURL: "", // the image being displayed
   boxes: [], // positions of faces detected
@@ -23,23 +25,30 @@ const initialState = { // Defines default data when app starts/user logs out.
   user: { id: "", name: "", email: "", entries: 0, joined: "" }, // stores user details and their stats
 };
 
-class App extends Component { // creates the App component
+class App extends Component {
   constructor() {
     super();
-    this.state = initialState; // stores all app data
-    this.lastClarifaiData = null; // temporarily stores face detection results, so don't need to refetch if same image loads
+    this.state = initialState;
+    this.lastClarifaiData = null; // temporarily stores face detection results
   }
 
-  loadUser = (data) => this.setState({ user: data }); // updates the app with user's details after they sign in/register
+  loadUser = (data) => this.setState({ user: data });
 
-  // takes detection data from Clarifai, converts face bounding box ratios into pixel positions on the image.
-  // ensures faces are drawn in correct location.
+  onRouteChange = (route) => {
+    if (route === "signout") {
+      this.setState(initialState);
+    } else if (route === "home") {
+      this.setState({ isSignedIn: true });
+    }
+    this.setState({ route });
+  };
+
   calculateFaceLocations = (data) => {
     const image = document.getElementById("inputimage");
-    const width = Number(image.width);
-    const height = Number(image.height);
+    const width = Number(image?.width);
+    const height = Number(image?.height);
 
-    return data.faces.map((face) => { // loop over every face in the image and adjust the square around the face
+    return data.faces.map((face) => {
       return {
         leftCol: face.left_col * width,
         topRow: face.top_row * height,
@@ -51,48 +60,52 @@ class App extends Component { // creates the App component
     });
   };
 
-  updateScore = (result) => { // function that centralizes what happens after a face detection
+  updateScore = (result) => {
     const baseURL = import.meta.env.VITE_API_BASE_URL;
     if (result.faces && result.faces.length > 0) {
-
       const boxes = this.calculateFaceLocations(result);
       this.displayFaceBoxes(boxes);
 
-      // get the count of the boxes (faces) to add them to the score
       const faceCount = boxes.length;
-      // update the label under the image 
       this.setState({
         statusMessage: `${faceCount} face(s) locked and loaded!`,
-        input: "" // clears the ImageLinkForm input field after a face is detected
+        input: "",
       });
 
-      // updates the score
-      fetch(`${baseURL}/score`, {
+      // ✅ SEND faceCount in request body so backend increments properly
+      fetch(`${baseURL}/api/image/${this.state.user.id}`, {
         method: "put",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: this.state.user.id, faces: faceCount }),
+        body: JSON.stringify({ count: faceCount }),
       })
         .then((res) => res.json())
-        .then((entries) =>
-          this.setState(Object.assign(this.state.user, { entries }))
+        .then((updatedUser) =>
+          this.setState({
+            user: {
+              ...this.state.user,
+              entries: updatedUser.entries, // ✅ update score properly
+            },
+          })
         )
         .catch(console.log);
     } else {
       this.displayFaceBoxes([]);
-      this.setState({ statusMessage: "Oops! That link seems very shy. Try another?" });
+      this.setState({
+        statusMessage: "Oops! That link seems very shy. Try another?",
+      });
     }
   };
 
-  displayFaceBoxes = (boxes) => this.setState({ boxes }); // updates the state so React re-renders face rectangles on the image
+  displayFaceBoxes = (boxes) => this.setState({ boxes });
 
   onInputChange = (event) => {
     this.setState({
       input: event.target.value,
-      statusMessage: "" // reset status when typing a new URL to avoid old msges lingering
+      statusMessage: "",
     });
   };
 
-  onImageLoad = () => { // still ensures face boxes show correctly after the image finishes loading
+  onImageLoad = () => {
     if (this.lastClarifaiData && this.lastClarifaiData.faces) {
       const boxes = this.calculateFaceLocations(this.lastClarifaiData);
       this.displayFaceBoxes(boxes);
@@ -101,83 +114,94 @@ class App extends Component { // creates the App component
     }
   };
 
-  //triggered when user clicks detect button.
-  // 1. avoids re-submitting the same image.
-  // 2. calls backend API which talks to Clarifai.
-  // 3. saves detection results and draws face boxes if found.
-  // 4. updates user's entries count (how many faces are detected).
-  // 5. if no faces or error --> clears boxes.
   onButtonSubmit = () => {
-
-    if (!this.state.input) return; // the text box is empty then do nothing
+    if (!this.state.input) return;
     if (this.state.input === this.state.imageURL) return;
 
-    // Reset image, boxes, and show analyzing message
     this.setState({
       imageURL: this.state.input,
       boxes: [],
-      statusMessage: "Inspecting pixels…"
+      statusMessage: "Inspecting pixels…",
     });
     this.lastClarifaiData = null;
 
-    // call local server when running on local and production server when running in prod
     const baseURL = import.meta.env.VITE_API_BASE_URL;
-    fetch(`${baseURL}/faceDetection`, {
+    fetch(`${baseURL}/api/image/url`, {
       method: "post",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ input: this.state.input }),
+      body: JSON.stringify({
+        imageUrl: this.state.input,
+        userId: this.state.user.id,
+      }),
     })
       .then((response) => response.json())
       .then((result) => {
+        if (result.data && Array.isArray(result.data)) {
+          result.faces = result.data.map((region) => {
+            const bbox = region.bounding_box || {};
+            return {
+              left_col: bbox.left_col,
+              top_row: bbox.top_row,
+              right_col: bbox.right_col,
+              bottom_row: bbox.bottom_row,
+            };
+          });
+        } else {
+          result.faces = [];
+        }
+
         this.lastClarifaiData = result;
-        // after successful face detection, updates the score/result
         this.updateScore(result);
       })
       .catch((err) => {
         console.log("error", err);
         this.displayFaceBoxes([]);
-        this.setState({ statusMessage: "Oops! That link seems very shy. Try another?" });
+        this.setState({
+          statusMessage: "Oops! That link seems very shy. Try another?",
+        });
       });
   };
 
-  onRouteChange = (route) => { // controls what page to show (signin, register, home), logs out user by resetting state to initialState.
-    if (route === "signout") this.setState(initialState);
-    else if (route === "home") this.setState({ isSignedIn: true });
-    this.setState({ route });
-  };
-
   render() {
-    const { isSignedIn, imageURL, route, boxes, user, statusMessage, input } = this.state;
+    const { isSignedIn, imageURL, route, boxes, user, statusMessage, input } =
+      this.state;
 
     return (
       <div className="App">
         <ParticlesBg type="square" bg={true} />
-        <Navigation isSignedIn={isSignedIn} onRouteChange={this.onRouteChange} />
+        <Navigation
+          isSignedIn={isSignedIn}
+          onRouteChange={this.onRouteChange}
+        />
         <Logo />
-        {route === "home" ? ( // if we are on the home page, then show the following components
+
+        {route === "home" ? (
           <div>
             <Rank name={user.name} entries={user.entries} />
             <ImageLinkForm
               onInputChange={this.onInputChange}
               onButtonSubmit={this.onButtonSubmit}
-              inputValue={input} // pass the input value to the form
+              inputValue={input}
             />
-
-            {/* Status message */}
-            <div className="status-message" style={{ marginTop: "1rem", fontWeight: "bold" }}>
+            <div
+              className="status-message"
+              style={{ marginTop: "1rem", fontWeight: "bold" }}
+            >
               {statusMessage}
             </div>
-
             <FaceRecognition
               imageURL={imageURL}
               boxes={boxes}
               onImageLoad={this.onImageLoad}
             />
           </div>
-        ) : route === "signin" ? (  // if we are on the signin page, show the following components
+        ) : route === "signin" ? (
           <SignIn loadUser={this.loadUser} onRouteChange={this.onRouteChange} />
         ) : (
-          <Register loadUser={this.loadUser} onRouteChange={this.onRouteChange} />
+          <Register
+            loadUser={this.loadUser}
+            onRouteChange={this.onRouteChange}
+          />
         )}
       </div>
     );
