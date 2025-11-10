@@ -29,8 +29,9 @@ class SignIn extends React.Component {
     const baseURL = import.meta.env.VITE_API_BASE_URL;
 
     fetch(`${baseURL}/api/auth/login`, {
-      method: "post",
+      method: "POST",
       headers: { "Content-Type": "application/json" },
+      credentials: "include", // ✅ this ensures browser stores + sends the session cookie
       body: JSON.stringify({
         email: this.state.signInEmail,
         password: this.state.signInPassword,

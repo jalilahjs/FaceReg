@@ -72,10 +72,11 @@ class App extends Component {
         input: "",
       });
 
-      // ✅ SEND faceCount in request body so backend increments properly
+      // SEND faceCount in request body so backend increments properly
       fetch(`${baseURL}/api/image/${this.state.user.id}`, {
         method: "put",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",  // send session cookie
         body: JSON.stringify({ count: faceCount }),
       })
         .then((res) => res.json())
@@ -83,7 +84,7 @@ class App extends Component {
           this.setState({
             user: {
               ...this.state.user,
-              entries: updatedUser.entries, // ✅ update score properly
+              entries: updatedUser.entries, // update score properly
             },
           })
         )
@@ -129,6 +130,7 @@ class App extends Component {
     fetch(`${baseURL}/api/image/url`, {
       method: "post",
       headers: { "Content-Type": "application/json" },
+      credentials: "include",  // send session cookie
       body: JSON.stringify({
         imageUrl: this.state.input,
         userId: this.state.user.id,

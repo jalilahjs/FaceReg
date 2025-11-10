@@ -38,6 +38,7 @@ class Register extends React.Component {
     fetch(`${baseURL}/api/auth/register`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      credentials: "include", // ✅ ensure session cookie is accepted
       body: JSON.stringify({
         name: this.state.name,
         email: this.state.email,
@@ -48,13 +49,13 @@ class Register extends React.Component {
       .then((data) => {
         this.setState({ loading: false });
 
-        // ✅ FIRST check if the backend returned an error
+        // FIRST check if the backend returned an error
         if (data.error) {
           this.setState({ error: data.error }); // show backend validation error (e.g., weak password)
           return;
         }
 
-        // ✅ Only unwrap user AFTER confirming no error
+        // Only unwrap user AFTER confirming no error
         const user = data.user;
         if (user && user.id) {
           this.props.loadUser(user);
@@ -84,7 +85,7 @@ class Register extends React.Component {
               <fieldset id="sign_up" className="ba b--transparent ph0 mh0">
                 <legend className="f2 fw6 ph0 mh0">Register</legend>
 
-                {/* ✅ This now shows backend validation (password strength) messages correctly */}
+                {/* This now shows backend validation (password strength) messages correctly */}
                 {error && <p style={{ color: "orange" }}>{error}</p>}
 
                 {/* Spinner while loading */}
