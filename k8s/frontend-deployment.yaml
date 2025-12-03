@@ -1,0 +1,20 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: inyourface-frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: inyourface-frontend
+  template:
+    metadata:
+      labels:
+        app: inyourface-frontend
+    spec:
+      containers:
+        - name: frontend
+          image: 512016124650.dkr.ecr.eu-central-1.amazonaws.com/inyourface-frontend:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 80

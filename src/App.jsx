@@ -75,7 +75,10 @@ class App extends Component {
       // SEND faceCount in request body so backend increments properly
       fetch(`${baseURL}/api/image/${this.state.user.id}`, {
         method: "put",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "X-User-Id": this.state.user.id
+        },
         credentials: "include",  // send session cookie
         body: JSON.stringify({ count: faceCount }),
       })
@@ -129,7 +132,10 @@ class App extends Component {
     const baseURL = import.meta.env.VITE_API_BASE_URL;
     fetch(`${baseURL}/api/image/url`, {
       method: "post",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "X-User-Id": this.state.user.id
+      },
       credentials: "include",  // send session cookie
       body: JSON.stringify({
         imageUrl: this.state.input,
@@ -138,6 +144,8 @@ class App extends Component {
     })
       .then((response) => response.json())
       .then((result) => {
+        console.log("CLARIFAI RAW RESULT:", result);
+
         if (result.data && Array.isArray(result.data)) {
           result.faces = result.data.map((region) => {
             const bbox = region.bounding_box || {};
