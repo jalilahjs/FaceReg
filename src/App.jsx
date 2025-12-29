@@ -1,8 +1,6 @@
-// This App.jsx is the main controller of my app. It stores all the global state, decides which page the user sees, and connects all components.
-// Brings in React (the framework) and Component (to create a class-based component).
-// Imports helper UI components like Nav, Logo, FaceReg etc.
-// ParticlesBg adds a moving background effect for nicer visuals.
-// App.css provides custom styles.
+// This App.jsx is the main controller of my app. It stores all the global state,
+// decides which page the user sees, and connects all components.
+
 import React, { Component } from "react";
 import ParticlesBg from "particles-bg";
 import Navigation from "./components/Navigation/Navigation";
@@ -12,24 +10,25 @@ import Rank from "./components/Rank/Rank";
 import ImageLinkForm from "./components/ImageLinkForm/ImageLinkForm";
 import SignIn from "./components/SignIn/SignIn";
 import Register from "./components/Register/Register";
+import SastDemo from "./components/SastDemo"; // 🔐 SAST demo component
 import "./App.css";
 
-// initialState in the foundation or the app's memory.
+// initialState in the foundation of the app's memory
 const initialState = {
-  input: "", // current image URL typed in by user
-  imageURL: "", // the image being displayed
-  boxes: [], // positions of faces detected
-  statusMessage: "", // display msgs likes "inspecting pixels..", etc.
-  route: "signin", // current page (signin, register or home)
-  isSignedIn: false, // tracks login status
-  user: { id: "", name: "", email: "", entries: 0, joined: "" }, // stores user details and their stats
+  input: "",
+  imageURL: "",
+  boxes: [],
+  statusMessage: "",
+  route: "signin",
+  isSignedIn: false,
+  user: { id: "", name: "", email: "", entries: 0, joined: "" },
 };
 
 class App extends Component {
   constructor() {
     super();
     this.state = initialState;
-    this.lastClarifaiData = null; // temporarily stores face detection results
+    this.lastClarifaiData = null;
   }
 
   loadUser = (data) => this.setState({ user: data });
@@ -48,20 +47,19 @@ class App extends Component {
     const width = Number(image?.width);
     const height = Number(image?.height);
 
-    return data.faces.map((face) => {
-      return {
-        leftCol: face.left_col * width,
-        topRow: face.top_row * height,
-        rightCol: width - face.right_col * width,
-        bottomRow: height - face.bottom_row * height,
-        width: (face.right_col - face.left_col) * width,
-        height: (face.bottom_row - face.top_row) * height,
-      };
-    });
+    return data.faces.map((face) => ({
+      leftCol: face.left_col * width,
+      topRow: face.top_row * height,
+      rightCol: width - face.right_col * width,
+      bottomRow: height - face.bottom_row * height,
+      width: (face.right_col - face.left_col) * width,
+      height: (face.bottom_row - face.top_row) * height,
+    }));
   };
 
   updateScore = (result) => {
     const baseURL = import.meta.env.VITE_API_BASE_URL;
+
     if (result.faces && result.faces.length > 0) {
       const boxes = this.calculateFaceLocations(result);
       this.displayFaceBoxes(boxes);
@@ -72,14 +70,13 @@ class App extends Component {
         input: "",
       });
 
-      // SEND faceCount in request body so backend increments properly
       fetch(`${baseURL}/api/image/${this.state.user.id}`, {
         method: "put",
         headers: {
           "Content-Type": "application/json",
-          "X-User-Id": this.state.user.id
+          "X-User-Id": this.state.user.id,
         },
-        credentials: "include",  // send session cookie
+        credentials: "include",
         body: JSON.stringify({ count: faceCount }),
       })
         .then((res) => res.json())
@@ -87,7 +84,7 @@ class App extends Component {
           this.setState({
             user: {
               ...this.state.user,
-              entries: updatedUser.entries, // update score properly
+              entries: updatedUser.entries,
             },
           })
         )
@@ -127,16 +124,17 @@ class App extends Component {
       boxes: [],
       statusMessage: "Inspecting pixels…",
     });
-    this.lastClarifaiData = null;
 
+    this.lastClarifaiData = null;
     const baseURL = import.meta.env.VITE_API_BASE_URL;
+
     fetch(`${baseURL}/api/image/url`, {
       method: "post",
       headers: {
         "Content-Type": "application/json",
-        "X-User-Id": this.state.user.id
+        "X-User-Id": this.state.user.id,
       },
-      credentials: "include",  // send session cookie
+      credentials: "include",
       body: JSON.stringify({
         imageUrl: this.state.input,
         userId: this.state.user.id,
@@ -144,8 +142,6 @@ class App extends Component {
     })
       .then((response) => response.json())
       .then((result) => {
-        console.log("CLARIFAI RAW RESULT:", result);
-
         if (result.data && Array.isArray(result.data)) {
           result.faces = result.data.map((region) => {
             const bbox = region.bounding_box || {};
@@ -188,17 +184,23 @@ class App extends Component {
         {route === "home" ? (
           <div>
             <Rank name={user.name} entries={user.entries} />
+
+            {/* 🔐 SAST DEMO – intentionally insecure component for static analysis */}
+            <SastDemo />
+
             <ImageLinkForm
               onInputChange={this.onInputChange}
               onButtonSubmit={this.onButtonSubmit}
               inputValue={input}
             />
+
             <div
               className="status-message"
               style={{ marginTop: "1rem", fontWeight: "bold" }}
             >
               {statusMessage}
             </div>
+
             <FaceRecognition
               imageURL={imageURL}
               boxes={boxes}

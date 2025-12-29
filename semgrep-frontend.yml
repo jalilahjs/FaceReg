@@ -1,0 +1,28 @@
+rules:
+  - id: javascript-eval
+    message: "Use of eval() with dynamic input can lead to code injection."
+    severity: ERROR
+    languages: [javascript, typescript]
+    patterns:
+      - pattern: eval($X)
+
+  - id: javascript-new-function
+    message: "Use of Function constructor can lead to code injection."
+    severity: ERROR
+    languages: [javascript, typescript]
+    patterns:
+      - pattern: new Function($X)
+
+  - id: dom-innerhtml
+    message: "Assignment to innerHTML with dynamic data can lead to DOM-based XSS."
+    severity: ERROR
+    languages: [javascript, typescript]
+    patterns:
+      - pattern: $EL.innerHTML = $X
+
+  - id: javascript-settimeout-string
+    message: "Passing a string to setTimeout can lead to code injection."
+    severity: ERROR
+    languages: [javascript, typescript]
+    patterns:
+      - pattern: setTimeout($X, $Y)

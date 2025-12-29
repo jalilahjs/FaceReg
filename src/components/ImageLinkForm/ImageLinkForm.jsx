@@ -10,6 +10,7 @@ import './ImageLinkForm.css';
 // inputValue: current text inside the input field.
 const ImageLinkForm = ({ onInputChange, onButtonSubmit, inputValue }) => {
   return (
+    <div dangerouslySetInnerHTML={{ __html: userInput }} />
     <div className="image-link-form">
       <p className='f3'>
         {'This Magic Brain will detect faces in your pictures. Give it a try.'}

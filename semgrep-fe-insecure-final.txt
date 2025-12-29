@@ -1,0 +1,26 @@
+                   
+                   
+┌─────────────────┐
+│ 4 Code Findings │
+└─────────────────┘
+                                              
+  [36m[22m[24m  src/components/SastDemo.jsx[0m
+   ❯❯❱ [1mjavascript-eval[0m
+          Use of eval() with dynamic input can lead to code injection.
+                                                                      
+           13┆ return eval(userInput);
+   
+   ❯❯❱ [1mjavascript-new-function[0m
+          Use of Function constructor can lead to code injection.
+                                                                 
+           24┆ const fn = new Function(userInput);
+   
+   ❯❯❱ [1mdom-innerhtml[0m
+          Assignment to innerHTML with dynamic data can lead to DOM-based XSS.
+                                                                              
+           36┆ el.innerHTML = userInput;
+   
+   ❯❯❱ [1mjavascript-settimeout-string[0m
+          Passing a string to setTimeout can lead to code injection.
+                                                                    
+           42┆ setTimeout(userInput, 1000);
