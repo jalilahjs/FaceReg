@@ -1,0 +1,14 @@
+Starting filesystem walk for root: /
+Scanned /Users/jalilah/FaceRegVite/FaceReg/package-lock.json file and found 621 packages
+End status: 0 dirs visited, 1 inodes visited, 1 Extract calls, 5.686292ms elapsed, 5.686ms wall time
+Total 3 packages affected by 3 known vulnerabilities (0 Critical, 0 High, 3 Medium, 0 Low, 0 Unknown) from 1 ecosystem.
+3 vulnerabilities can be fixed.
+
+
++-------------------------------------+------+-----------+---------------+---------+---------------+-------------------+
+| OSV URL                             | CVSS | ECOSYSTEM | PACKAGE       | VERSION | FIXED VERSION | SOURCE            |
++-------------------------------------+------+-----------+---------------+---------+---------------+-------------------+
+| https://osv.dev/GHSA-7v5v-9h63-cj86 | 5.3  | npm       | @grpc/grpc-js | 1.7.3   | 1.8.22        | package-lock.json |
+| https://osv.dev/GHSA-mh29-5h37-fv8m | 5.3  | npm       | js-yaml       | 4.1.0   | 4.1.1         | package-lock.json |
+| https://osv.dev/GHSA-93m4-6634-74q7 | 6.0  | npm       | vite (dev)    | 7.1.6   | 7.1.11        | package-lock.json |
++-------------------------------------+------+-----------+---------------+---------+---------------+-------------------+
