@@ -1,4 +1,4 @@
 Starting filesystem walk for root: /
 Scanned /Users/jalilah/FaceRegVite/FaceReg/package-lock.json file and found 619 packages
-End status: 0 dirs visited, 1 inodes visited, 1 Extract calls, 8.765625ms elapsed, 8.765ms wall time
+End status: 0 dirs visited, 1 inodes visited, 1 Extract calls, 6.3735ms elapsed, 6.373ms wall time
 No issues found
