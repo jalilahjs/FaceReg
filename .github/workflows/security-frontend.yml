@@ -32,7 +32,7 @@ jobs:
 
       # ---------- SCA ----------
       - name: SCA - OSV Scanner
-        uses: google/osv-scanner-action@v1
+        uses: google/osv-scanner-action@main
         with:
           scan-args: |
             -r
