@@ -4,12 +4,11 @@
 
 import React from "react";
 import Loader from "../Loader/Loader"; // 
-import { Data } from "clarifai-nodejs-grpc/proto/clarifai/api/resources_pb";
 
 class SignIn extends React.Component {
   constructor(props) {
     super(props);
-    this.state = {
+    this.state = { // Holds email + PW typed by the user.
       signInEmail: "",
       signInPassword: "",
       error: "",
@@ -25,51 +24,60 @@ class SignIn extends React.Component {
     this.setState({ signInPassword: event.target.value });
   };
 
-  onSubmitSignIn = () => { // this is called when user clicks sign in
-    this.setState({ loading: true, error: "" }); // show loader & clear errors
+  onSubmitSignIn = () => {
+    this.setState({ loading: true, error: "" });
     const baseURL = import.meta.env.VITE_API_BASE_URL;
-    fetch(`${baseURL}/signin`, {
-      method: "post",
+
+    fetch(`${baseURL}/api/auth/login`, {
+      method: "POST",
       headers: { "Content-Type": "application/json" },
+      credentials: "include", // ✅ this ensures browser stores + sends the session cookie
       body: JSON.stringify({
         email: this.state.signInEmail,
         password: this.state.signInPassword,
       }),
     })
-      .then((res) => res.json())
-      .then((user) => {
+      .then((response) => response.json())
+      .then((data) => {
+        console.log("LOGIN RESPONSE:", data);  // <--- DEBUG
         this.setState({ loading: false });
 
-        if (user.id) {
-          this.props.loadUser(user);
+        // ✅ FIRST check if backend returned error (so user sees wrong password, etc.)
+        if (data.error) {
+          this.setState({ error: data.error });
+          return;
+        }
+
+        // ✅ Then unwrap user if success
+        if (data.user && data.user.id) {
+          this.props.loadUser(data.user);  // ✅ PASS THE USER OBJECT
           this.props.onRouteChange("home");
-        } else if (user === "wrong credentials") {
-          this.setState({ error: "Invalid email or password." });
-        } else if (user === "unable to get user") {
-          this.setState({ error: "Server error. Please try again later." });
         } else {
-          this.setState({ error: user.error });
+          // fallback when user is not found but no .error key present (rare)
+          this.setState({ error: "Invalid login response" });
         }
       })
-      .catch(() => {
+      .catch((err) => {
+        console.log("LOGIN ERROR:", err);
         this.setState({
+          error: "Unable to sign in. Please try again later.",
           loading: false,
-          error: "Something went wrong. Please try again.",
         });
       });
   };
 
-  render() {
+  render() { // renders email and PW input fields
     const { onRouteChange } = this.props;
     const { error, loading } = this.state;
 
-    return (
+    return ( // HTML code that builds the components - uses Tachyons classes for layout, spacing and styling. 
       <div className="center">
         <article className="br3 ba dark-gray b--black-10 mv4 w-100 w-50-m w-25-l mw6 shadow-5 center">
           <main className="pa4 black-80">
             <div className="measure">
               <fieldset id="sign_up" className="ba b--transparent ph0 mh0">
                 <legend className="f2 fw6 ph0 mh0">Sign In</legend>
+                {/* ✅ This now shows backend-generated login errors correctly */}
                 {error && <p style={{ color: "orange" }}>{error}</p>}
                 {loading && (
                   <div className="tc mv3">
@@ -141,4 +149,3 @@ class SignIn extends React.Component {
 }
 
 export default SignIn;
-
