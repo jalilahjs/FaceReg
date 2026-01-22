@@ -39,7 +39,7 @@ jobs:
 
       - name: SCA - OSV Scanner
         run: |
-          osv-scanner scan -r . --exit-code=1
+          osv-scanner scan -r .
 
       - name: SCA summary
         if: always()
