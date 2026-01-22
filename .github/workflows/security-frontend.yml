@@ -1,0 +1,71 @@
+name: Security Scans (Frontend)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  security:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ---------- SAST ----------
+      - name: SAST - Semgrep
+        uses: semgrep/semgrep-action@v1
+        with:
+          config: p/ci
+        env:
+          SEMGREP_APP_TOKEN: ""
+
+      - name: SAST summary
+        if: always()
+        run: |
+          {
+            echo "## Frontend - SAST (Semgrep)"
+            echo "Semgrep scan completed. Review logs above for findings."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # ---------- SCA ----------
+      - name: SCA - OSV Scanner
+        uses: google/osv-scanner-action@v1
+        with:
+          scan-args: |
+            -r
+            .
+          fail-on-vuln: true
+
+      - name: SCA summary
+        if: always()
+        run: |
+          {
+            echo "## Frontend - SCA (OSV)"
+            echo "OSV scan completed. Review logs above for vulnerable dependencies."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # ---------- Build container ----------
+      - name: Build Docker image
+        run: docker build -t facereg-frontend:ci .
+
+      # ---------- Container Security ----------
+      - name: Container Scan - Trivy
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          image-ref: facereg-frontend:ci
+          format: table
+          vuln-type: os,library
+          severity: HIGH,CRITICAL
+          exit-code: "1"
+          ignore-unfixed: true
+
+      - name: Container scan summary
+        if: always()
+        run: |
+          {
+            echo "## Frontend - Container Security (Trivy)"
+            echo "Trivy image scan completed. Review logs above for HIGH/CRITICAL issues."
+          } >> "$GITHUB_STEP_SUMMARY"
