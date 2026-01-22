@@ -31,13 +31,15 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       # ---------- SCA ----------
+      - name: Install OSV Scanner
+        run: |
+          curl -sSfL https://github.com/google/osv-scanner/releases/latest/download/osv-scanner_linux_amd64 -o osv-scanner
+          chmod +x osv-scanner
+          sudo mv osv-scanner /usr/local/bin/osv-scanner
+
       - name: SCA - OSV Scanner
-        uses: google/osv-scanner-action@main
-        with:
-          scan-args: |
-            -r
-            .
-          fail-on-vuln: true
+        run: |
+          osv-scanner scan -r . --exit-code=1
 
       - name: SCA summary
         if: always()
