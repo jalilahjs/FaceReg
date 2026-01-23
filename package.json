@@ -9,6 +9,9 @@
     "lint": "eslint .",
     "preview": "vite preview"
   },
+  "overrides": {
+    "@grpc/grpc-js": "^1.8.22"
+  },
   "dependencies": {
     "@tsparticles/react": "^3.0.0",
     "clarifai": "^2.9.1",
