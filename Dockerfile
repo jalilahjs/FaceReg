@@ -1,7 +1,7 @@
 # --------------------------------------------------
-# 1) Build stage (Node)
+# 1) Build stage
 # --------------------------------------------------
-FROM node:20-alpine3.20 AS build
+FROM node:20-alpine3.21 AS build
 
 WORKDIR /app
 
@@ -12,14 +12,14 @@ COPY . .
 RUN npm run build
 
 # --------------------------------------------------
-# 2) Runtime stage (Nginx)
+# 2) Runtime stage
 # --------------------------------------------------
 FROM nginx:1.27-alpine3.21
 
-# Upgrade OS packages to get security patches
+# Security updates
 RUN apk update && apk upgrade --no-cache
 
-# Remove default nginx site
+# Clean default nginx html
 RUN rm -rf /usr/share/nginx/html/*
 
 # Copy build output
