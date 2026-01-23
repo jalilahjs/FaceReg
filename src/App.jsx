@@ -12,10 +12,6 @@ import Rank from "./components/Rank/Rank";
 import ImageLinkForm from "./components/ImageLinkForm/ImageLinkForm";
 import SignIn from "./components/SignIn/SignIn";
 import Register from "./components/Register/Register";
-<<<<<<< Updated upstream
-=======
-
->>>>>>> Stashed changes
 import "./App.css";
 
 // initialState in the foundation or the app's memory.
@@ -66,18 +62,6 @@ class App extends Component {
 
   updateScore = (result) => {
     const baseURL = import.meta.env.VITE_API_BASE_URL;
-<<<<<<< Updated upstream
-=======
-
-    if (result.status === "error") {
-      this.setState({
-        statusMessage: result.message || "An error occurred with the API.",
-        input: "",
-      });
-      return;
-    }
-
->>>>>>> Stashed changes
     if (result.faces && result.faces.length > 0) {
       const boxes = this.calculateFaceLocations(result);
       this.displayFaceBoxes(boxes);
@@ -204,12 +188,6 @@ class App extends Component {
         {route === "home" ? (
           <div>
             <Rank name={user.name} entries={user.entries} />
-<<<<<<< Updated upstream
-=======
-
-
-
->>>>>>> Stashed changes
             <ImageLinkForm
               onInputChange={this.onInputChange}
               onButtonSubmit={this.onButtonSubmit}
@@ -226,7 +204,7 @@ class App extends Component {
               boxes={boxes}
               onImageLoad={this.onImageLoad}
             />
-          </div>
+          </div >
         ) : route === "signin" ? (
           <SignIn loadUser={this.loadUser} onRouteChange={this.onRouteChange} />
         ) : (
@@ -234,7 +212,8 @@ class App extends Component {
             loadUser={this.loadUser}
             onRouteChange={this.onRouteChange}
           />
-        )}
+        )
+        }
       </div>
     );
   }
