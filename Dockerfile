@@ -20,7 +20,7 @@ RUN npm run build
 # --------------------------------------
 # 2) Run stage (Nginx)
 # --------------------------------------
-FROM nginx:alpine
+FROM nginx:1.26-alpine3.20
 
 # Remove default nginx website
 RUN rm -rf /usr/share/nginx/html/*
