@@ -49,7 +49,7 @@ jobs:
 
       # ---------- Build container ----------
       - name: Build Docker image
-        run: docker build -t facereg-frontend:ci .
+        run: docker build --no-cache -t facereg-frontend:ci .
 
       # ---------- Container Security ----------
       - name: Container Scan - Trivy
