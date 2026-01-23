@@ -11,18 +11,17 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # ---------- Checkout ----------
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          ref: inYourFaceJava
 
-      # ---------- Debug: show Dockerfile ----------
-      - name: Show Dockerfile base images
+      # ---------- Debug: confirm Dockerfile ----------
+      - name: Show Dockerfile FROM lines
         run: |
           echo "---- Dockerfile FROM lines ----"
-          grep -n '^FROM ' Dockerfile || true
-          echo "---- Full first 60 lines ----"
-          sed -n '1,60p' Dockerfile
+          grep -n '^FROM ' Dockerfile
+          echo "---- Full Dockerfile ----"
+          sed -n '1,120p' Dockerfile
 
       # ---------- SAST ----------
       - name: SAST - Semgrep
@@ -31,14 +30,6 @@ jobs:
           config: p/ci
         env:
           SEMGREP_APP_TOKEN: ""
-
-      - name: SAST summary
-        if: always()
-        run: |
-          {
-            echo "## Frontend - SAST (Semgrep)"
-            echo "Semgrep scan completed. Review logs above for findings."
-          } >> "$GITHUB_STEP_SUMMARY"
 
       # ---------- SCA ----------
       - name: Install OSV Scanner
@@ -51,30 +42,23 @@ jobs:
         run: |
           osv-scanner scan -r .
 
-      - name: SCA summary
-        if: always()
-        run: |
-          {
-            echo "## Frontend - SCA (OSV)"
-            echo "OSV scan completed. Review logs above for vulnerable dependencies."
-          } >> "$GITHUB_STEP_SUMMARY"
-
-      # ---------- Build container (UNIQUE TAG, NO CACHE) ----------
-      - name: Build Docker image (explicit Dockerfile, no cache)
+      # ---------- Build container (ROOT CONTEXT, EXPLICIT DOCKERFILE) ----------
+      - name: Build Docker image (root context, pinned Dockerfile)
         run: |
           IMAGE_TAG=facereg-frontend:${{ github.sha }}
+
           docker build \
             --no-cache \
             --pull \
-            -f Dockerfile \
+            -f ./Dockerfile \
             -t $IMAGE_TAG \
             .
-          echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
-          docker run --rm $IMAGE_TAG cat /etc/os-release
 
-      - name: Inspect built image OS
+          echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
+
+      # ---------- Verify OS inside image ----------
+      - name: Verify Alpine version inside image
         run: |
-          echo "Inspecting image OS:"
           docker run --rm $IMAGE_TAG cat /etc/os-release
 
       # ---------- Container Security ----------
@@ -88,10 +72,13 @@ jobs:
           exit-code: "1"
           ignore-unfixed: true
 
-      - name: Container scan summary
+      # ---------- Summary ----------
+      - name: Security scan summary
         if: always()
         run: |
           {
-            echo "## Frontend - Container Security (Trivy)"
-            echo "Trivy image scan completed. Review logs above for HIGH/CRITICAL issues."
+            echo "## Frontend Security Scans"
+            echo "- SAST: Semgrep completed"
+            echo "- SCA: OSV completed"
+            echo "- Container: Trivy completed"
           } >> "$GITHUB_STEP_SUMMARY"
