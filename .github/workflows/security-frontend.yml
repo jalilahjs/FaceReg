@@ -41,15 +41,21 @@ jobs:
 
       - name: SCA - OSV Scanner (fail only on HIGH / CRITICAL)
         run: |
-          set -o pipefail
+          set -e
+
+          # Run scan but never fail directly
           osv-scanner scan -r . --format json > osv.json || true
 
-          # Fail only if HIGH or CRITICAL exists
-          if jq -e '.results[].packages[].vulnerabilities[] | select(.severity == "HIGH" or .severity == "CRITICAL")' osv.json > /dev/null; then
-            echo "❌ HIGH or CRITICAL vulnerability found by OSV"
+          echo "Checking for HIGH or CRITICAL vulnerabilities…"
+
+          if jq -e '
+            .results[].packages[].vulnerabilities[]? 
+            | select(.severity == "HIGH" or .severity == "CRITICAL")
+          ' osv.json > /dev/null; then
+            echo "❌ HIGH or CRITICAL vulnerability found"
             exit 1
           else
-            echo "✅ No HIGH or CRITICAL vulnerabilities found by OSV"
+            echo "✅ No HIGH or CRITICAL vulnerabilities found"
           fi
 
       # ---------- Build container (ROOT CONTEXT, EXPLICIT DOCKERFILE) ----------
