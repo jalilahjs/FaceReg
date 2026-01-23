@@ -69,6 +69,11 @@ jobs:
           echo "---- OS release inside image ----"
           docker run --rm $IMAGE_TAG cat /etc/os-release || true
 
+      - name: Inspect built image OS
+        run: |
+          echo "Inspecting image OS:"
+          docker run --rm $IMAGE_TAG cat /etc/os-release
+
       # ---------- Container Security ----------
       - name: Container Scan - Trivy
         uses: aquasecurity/trivy-action@0.24.0
