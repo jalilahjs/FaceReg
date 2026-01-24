@@ -7,94 +7,11 @@ permissions:
   contents: read
 
 jobs:
-  security:
-    runs-on: ubuntu-latest
+  sast:
+    uses: ./.github/workflows/sast-frontend.yml
 
-    steps:
-      # ---------- Checkout ----------
-      - name: Checkout repository
-        uses: actions/checkout@v4
+  sca:
+    uses: ./.github/workflows/sca-frontend.yml
 
-      # ---------- Debug: confirm Dockerfile ----------
-      - name: Show Dockerfile FROM lines
-        run: |
-          echo "---- Dockerfile FROM lines ----"
-          grep -n '^FROM ' Dockerfile
-          echo "---- Full Dockerfile ----"
-          sed -n '1,120p' Dockerfile
-
-      # ---------- SAST ----------
-      - name: SAST - Semgrep
-        uses: semgrep/semgrep-action@v1
-        with:
-          config: p/ci
-        env:
-          SEMGREP_APP_TOKEN:
-            ""
-
-            # ---------- SCA ----------
-      - name: Install OSV Scanner
-        run: |
-          curl -sSfL https://github.com/google/osv-scanner/releases/latest/download/osv-scanner_linux_amd64 -o osv-scanner
-          chmod +x osv-scanner
-          sudo mv osv-scanner /usr/local/bin/osv-scanner
-
-      - name: SCA - OSV Scanner (fail only on HIGH / CRITICAL)
-        run: |
-          set -e
-
-          # Run scan but never fail directly
-          osv-scanner scan -r . --format json > osv.json || true
-
-          echo "Checking for HIGH or CRITICAL vulnerabilities…"
-
-          if jq -e '
-            .results[].packages[].vulnerabilities[]? 
-            | select(.severity == "HIGH" or .severity == "CRITICAL")
-          ' osv.json > /dev/null; then
-            echo "❌ HIGH or CRITICAL vulnerability found"
-            exit 1
-          else
-            echo "✅ No HIGH or CRITICAL vulnerabilities found"
-          fi
-
-      # ---------- Build container (ROOT CONTEXT, EXPLICIT DOCKERFILE) ----------
-      - name: Build Docker image (root context, pinned Dockerfile)
-        run: |
-          IMAGE_TAG=facereg-frontend:${{ github.sha }}
-
-          docker build \
-            --no-cache \
-            --pull \
-            -f ./Dockerfile \
-            -t $IMAGE_TAG \
-            .
-
-          echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
-
-      # ---------- Verify OS inside image ----------
-      - name: Verify Alpine version inside image
-        run: |
-          docker run --rm $IMAGE_TAG cat /etc/os-release
-
-      # ---------- Container Security ----------
-      - name: Container Scan - Trivy
-        uses: aquasecurity/trivy-action@0.24.0
-        with:
-          image-ref: ${{ env.IMAGE_TAG }}
-          format: table
-          vuln-type: os,library
-          severity: HIGH,CRITICAL
-          exit-code: "1"
-          ignore-unfixed: true
-
-      # ---------- Summary ----------
-      - name: Security scan summary
-        if: always()
-        run: |
-          {
-            echo "## Frontend Security Scans"
-            echo "- SAST: Semgrep completed"
-            echo "- SCA: OSV completed"
-            echo "- Container: Trivy completed"
-          } >> "$GITHUB_STEP_SUMMARY"
+  container:
+    uses: ./.github/workflows/container-security-frontend.yml
