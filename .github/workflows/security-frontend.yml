@@ -107,3 +107,4 @@ jobs:
             echo "- SCA: OSV completed (MEDIUM tolerated)"
             echo "- Container: Trivy completed (OS + libs scanned)"
           } >> "$GITHUB_STEP_SUMMARY"
+# trigger refresh
