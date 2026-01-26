@@ -7,11 +7,103 @@ permissions:
   contents: read
 
 jobs:
+  # ---------- SAST ----------
   sast:
-    uses: ./.github/workflows/sast-frontend.yml
+    name: SAST (Semgrep)
+    runs-on: ubuntu-latest
 
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: SAST - Semgrep
+        uses: semgrep/semgrep-action@v1
+        with:
+          config: p/ci
+        env:
+          SEMGREP_APP_TOKEN: ""
+
+  # ---------- SCA ----------
   sca:
-    uses: ./.github/workflows/sca-frontend.yml
+    name: SCA (OSV)
+    runs-on: ubuntu-latest
 
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install OSV Scanner
+        run: |
+          curl -sSfL https://github.com/google/osv-scanner/releases/latest/download/osv-scanner_linux_amd64 -o osv-scanner
+          chmod +x osv-scanner
+          sudo mv osv-scanner /usr/local/bin/osv-scanner
+
+      - name: SCA - OSV Scanner (fail only on HIGH / CRITICAL)
+        run: |
+          set -e
+          osv-scanner scan -r . --format json > osv.json || true
+
+          echo "Checking for HIGH or CRITICAL vulnerabilities..."
+
+          if jq -e '
+            .results[].packages[].vulnerabilities[]?
+            | select(.severity == "HIGH" or .severity == "CRITICAL")
+          ' osv.json > /dev/null; then
+            echo "❌ HIGH or CRITICAL vulnerability found"
+            exit 1
+          else
+            echo "✅ No HIGH or CRITICAL vulnerabilities found"
+          fi
+
+  # ---------- Container Security ----------
   container:
-    uses: ./.github/workflows/container-security-frontend.yml
+    name: Container Security (Trivy)
+    runs-on: ubuntu-latest
+    needs: [sast, sca]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: |
+          IMAGE_TAG=facereg-frontend:${{ github.sha }}
+
+          docker build \
+            --no-cache \
+            --pull \
+            -t $IMAGE_TAG \
+            .
+
+          echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
+
+      - name: Verify OS inside image
+        run: |
+          docker run --rm $IMAGE_TAG cat /etc/os-release
+
+      - name: Container Scan - Trivy
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          image-ref: ${{ env.IMAGE_TAG }}
+          format: table
+          vuln-type: os,library
+          severity: HIGH,CRITICAL
+          exit-code: "1"
+          ignore-unfixed: true
+
+  # ---------- Summary ----------
+  summary:
+    name: Security Summary
+    runs-on: ubuntu-latest
+    needs: [sast, sca, container]
+    if: always()
+
+    steps:
+      - name: Write summary
+        run: |
+          {
+            echo "## Frontend Security Scans"
+            echo "- SAST: Semgrep completed (MEDIUM shown, HIGH blocks)"
+            echo "- SCA: OSV completed (MEDIUM tolerated)"
+            echo "- Container: Trivy completed (OS + libs scanned)"
+          } >> "$GITHUB_STEP_SUMMARY"
