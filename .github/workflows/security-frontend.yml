@@ -7,7 +7,9 @@ permissions:
   contents: read
 
 jobs:
-  # ---------- SAST ----------
+  # =========================
+  # SAST
+  # =========================
   sast:
     name: SAST (Semgrep)
     runs-on: ubuntu-latest
@@ -16,16 +18,18 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: SAST - Semgrep
+      - name: Run Semgrep (MEDIUM+ shown, HIGH+ block)
         uses: semgrep/semgrep-action@v1
         with:
           config: p/ci
         env:
           SEMGREP_APP_TOKEN: ""
 
-  # ---------- SCA ----------
+  # =========================
+  # SCA
+  # =========================
   sca:
-    name: SCA (OSV)
+    name: SCA (OSV Scanner)
     runs-on: ubuntu-latest
 
     steps:
@@ -38,9 +42,8 @@ jobs:
           chmod +x osv-scanner
           sudo mv osv-scanner /usr/local/bin/osv-scanner
 
-      - name: SCA - OSV Scanner (fail only on HIGH / CRITICAL)
+      - name: Run OSV (MEDIUM allowed, HIGH/CRITICAL fail)
         run: |
-          set -e
           osv-scanner scan -r . --format json > osv.json || true
 
           echo "Checking for HIGH or CRITICAL vulnerabilities..."
@@ -52,10 +55,13 @@ jobs:
             echo "❌ HIGH or CRITICAL vulnerability found"
             exit 1
           else
+            echo "⚠️ MEDIUM vulnerabilities may exist (allowed)"
             echo "✅ No HIGH or CRITICAL vulnerabilities found"
           fi
 
-  # ---------- Container Security ----------
+  # =========================
+  # CONTAINER SECURITY
+  # =========================
   container:
     name: Container Security (Trivy)
     runs-on: ubuntu-latest
@@ -81,7 +87,7 @@ jobs:
         run: |
           docker run --rm $IMAGE_TAG cat /etc/os-release
 
-      - name: Container Scan - Trivy
+      - name: Trivy Scan (MEDIUM shown, HIGH/CRITICAL fail)
         uses: aquasecurity/trivy-action@0.24.0
         with:
           image-ref: ${{ env.IMAGE_TAG }}
@@ -91,7 +97,9 @@ jobs:
           exit-code: "1"
           ignore-unfixed: true
 
-  # ---------- Summary ----------
+  # =========================
+  # SUMMARY
+  # =========================
   summary:
     name: Security Summary
     runs-on: ubuntu-latest
@@ -103,8 +111,7 @@ jobs:
         run: |
           {
             echo "## Frontend Security Scans"
-            echo "- SAST: Semgrep completed (MEDIUM shown, HIGH blocks)"
-            echo "- SCA: OSV completed (MEDIUM tolerated)"
-            echo "- Container: Trivy completed (OS + libs scanned)"
+            echo "- SAST (Semgrep): MEDIUM shown, HIGH blocks"
+            echo "- SCA (OSV): MEDIUM tolerated, HIGH/CRITICAL block"
+            echo "- Container (Trivy): OS + libraries scanned"
           } >> "$GITHUB_STEP_SUMMARY"
-# trigger refresh
