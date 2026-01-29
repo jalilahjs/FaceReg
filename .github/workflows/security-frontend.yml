@@ -38,18 +38,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Semgrep
-        run: pip install semgrep
+      - run: pip install semgrep
 
-      - name: Run Semgrep (JSON report, all severities)
+      - name: Run Semgrep (all severities)
         run: |
-          semgrep scan \
-            --config p/ci \
-            --json \
-            --output semgrep-frontend.json || true
+          semgrep scan --config p/ci --json --output semgrep-frontend.json || true
 
       - name: Upload Semgrep report
-        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: semgrep-frontend-report
@@ -72,19 +67,33 @@ jobs:
           chmod +x osv-scanner
           sudo mv osv-scanner /usr/local/bin/osv-scanner
 
-      - name: Run OSV scan (all severities)
+      - name: Run OSV scan
         run: |
           osv-scanner scan -r . --format json > osv.json || true
 
-      - name: Enforce OSV severity gate (HIGH / CRITICAL)
+      - name: OSV severity summary + gate
         run: |
-          jq -e '
-            .results[].packages[].vulnerabilities[]?
-            | select(.severity == "HIGH" or .severity == "CRITICAL")
-          ' osv.json > /dev/null && exit 1 || exit 0
+          HIGH=$(jq '[.results[].packages[].vulnerabilities[]? | select(.severity=="HIGH")] | length' osv.json)
+          CRIT=$(jq '[.results[].packages[].vulnerabilities[]? | select(.severity=="CRITICAL")] | length' osv.json)
+          MED=$(jq '[.results[].packages[].vulnerabilities[]? | select(.severity=="MEDIUM")] | length' osv.json)
+          LOW=$(jq '[.results[].packages[].vulnerabilities[]? | select(.severity=="LOW")] | length' osv.json)
+
+          echo "OSV results:"
+          echo "CRITICAL=$CRIT HIGH=$HIGH MEDIUM=$MED LOW=$LOW"
+
+          {
+            echo "### OSV Dependency Scan"
+            echo "- CRITICAL: $CRIT"
+            echo "- HIGH: $HIGH"
+            echo "- MEDIUM: $MED"
+            echo "- LOW: $LOW"
+          } >> $GITHUB_STEP_SUMMARY
+
+          if [ "$CRIT" -gt 0 ] || [ "$HIGH" -gt 0 ]; then
+            exit 1
+          fi
 
       - name: Upload OSV report
-        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: osv-frontend-report
@@ -100,17 +109,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Build Docker image (clean, reproducible)
+      - name: Build Docker image
         run: |
           IMAGE_TAG=facereg-frontend:${{ github.sha }}
           docker build --no-cache --pull -t $IMAGE_TAG .
           echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
 
-      - name: Verify OS inside image
-        run: |
-          docker run --rm --entrypoint cat ${{ env.IMAGE_TAG }} /etc/os-release
+      - name: Verify OS
+        run: docker run --rm --entrypoint cat $IMAGE_TAG /etc/os-release
 
-      - name: Trivy scan (JSON, all severities)
+      - name: Trivy scan
         uses: aquasecurity/trivy-action@0.24.0
         with:
           image-ref: ${{ env.IMAGE_TAG }}
@@ -120,15 +128,29 @@ jobs:
           ignore-unfixed: true
           exit-code: "0"
 
-      - name: Enforce Trivy severity gate (HIGH / CRITICAL)
+      - name: Trivy severity summary + gate
         run: |
-          jq -e '
-            .Results[].Vulnerabilities[]?
-            | select(.Severity == "HIGH" or .Severity == "CRITICAL")
-          ' trivy-frontend.json > /dev/null && exit 1 || exit 0
+          HIGH=$(jq '[.Results[].Vulnerabilities[]? | select(.Severity=="HIGH")] | length' trivy-frontend.json)
+          CRIT=$(jq '[.Results[].Vulnerabilities[]? | select(.Severity=="CRITICAL")] | length' trivy-frontend.json)
+          MED=$(jq '[.Results[].Vulnerabilities[]? | select(.Severity=="MEDIUM")] | length' trivy-frontend.json)
+          LOW=$(jq '[.Results[].Vulnerabilities[]? | select(.Severity=="LOW")] | length' trivy-frontend.json)
+
+          echo "Trivy results:"
+          echo "CRITICAL=$CRIT HIGH=$HIGH MEDIUM=$MED LOW=$LOW"
+
+          {
+            echo "### Trivy Container Scan"
+            echo "- CRITICAL: $CRIT"
+            echo "- HIGH: $HIGH"
+            echo "- MEDIUM: $MED"
+            echo "- LOW: $LOW"
+          } >> $GITHUB_STEP_SUMMARY
+
+          if [ "$CRIT" -gt 0 ] || [ "$HIGH" -gt 0 ]; then
+            exit 1
+          fi
 
       - name: Upload Trivy report
-        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: trivy-frontend-report
@@ -148,7 +170,7 @@ jobs:
           {
             echo "## Frontend Security Scans"
             echo ""
-            echo "- **Linting:** Hadolint report uploaded"
+            echo "- **Linting:** Hadolint reports uploaded"
             echo "- **SAST:** Semgrep (all severities visible, JSON artifact)"
             echo "- **SCA:** OSV Scanner (all severities visible; HIGH/CRITICAL gate)"
             echo "- **Container:** Trivy (OS + JS libraries; HIGH/CRITICAL gate)"
